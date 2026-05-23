@@ -67,17 +67,35 @@ export default function LoginScreen({ navigation, route }: any) {
     if (!phone || phone.length < 10) return;
     setLoading(true);
     await new Promise((r) => setTimeout(r, 1200));
-    setUser({
-      id: 'user_' + Date.now(),
-      name: name || 'User',
-      phone,
-      role: null,
-      rating: 5.0,
-      totalJobs: 0,
-      isVerified: false,
-    });
-    setLoading(false);
-    navigation.navigate('RoleSelect');
+
+    if (isNewUser) {
+      // Brand new account — save user with no role yet, then pick role
+      setUser({
+        id: 'user_' + Date.now(),
+        name: name || 'User',
+        phone,
+        role: null,
+        rating: 5.0,
+        totalJobs: 0,
+        isVerified: false,
+      });
+      setLoading(false);
+      navigation.navigate('RoleSelect');
+    } else {
+      // Returning user — go straight to dashboard (default: SenderTabs)
+      // In production this would load the saved role from the backend
+      setUser({
+        id: 'user_returning',
+        name: 'User',
+        phone,
+        role: 'sender',
+        rating: 4.8,
+        totalJobs: 12,
+        isVerified: true,
+      });
+      setLoading(false);
+      navigation.reset({ index: 0, routes: [{ name: 'SenderTabs' }] });
+    }
   };
 
   const isValid = phone.length >= 10;
