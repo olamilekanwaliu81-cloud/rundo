@@ -200,13 +200,13 @@ export default function WelcomeScreen({ navigation }: any) {
         <PremiumButton
           label="Get Started Free"
           variant="accent"
-          onPress={() => navigation.navigate('Login')}
+          onPress={() => navigation.navigate('Login', { isNewUser: true })}
           style={{ marginBottom: Spacing.sm }}
         />
         <PremiumButton
           label="I already have an account"
           variant="ghost"
-          onPress={() => navigation.navigate('Login')}
+          onPress={() => navigation.navigate('Login', { isNewUser: false })}
         />
         <Text style={styles.footer}>Lagos · Abuja · Port Harcourt · Ibadan</Text>
       </Animated.View>

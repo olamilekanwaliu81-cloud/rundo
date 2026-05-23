@@ -15,10 +15,12 @@ import { Colors, Spacing, FontSize, Radius, Shadow } from '../../constants/theme
 import { useStore } from '../../store/useStore';
 import { PremiumButton } from '../../components/PremiumButton';
 
-export default function LoginScreen({ navigation }: any) {
+export default function LoginScreen({ navigation, route }: any) {
   const [phone, setPhone] = useState('');
   const [name, setName] = useState('');
-  const [isNewUser, setIsNewUser] = useState(false);
+  const [isNewUser, setIsNewUser] = useState<boolean>(
+    route?.params?.isNewUser ?? false
+  );
   const [loading, setLoading] = useState(false);
   const [phoneFocused, setPhoneFocused] = useState(false);
   const [nameFocused, setNameFocused] = useState(false);
@@ -110,9 +112,13 @@ export default function LoginScreen({ navigation }: any) {
             <Text style={styles.brandBadgeText}>RUNDO</Text>
           </View>
           <Text style={styles.title}>
-            {isNewUser ? 'Create your\naccount' : 'Welcome\nback'}
+            {isNewUser ? 'Create your\naccount' : 'Welcome\nback 👋'}
           </Text>
-          <Text style={styles.subtitle}>Enter your Nigerian phone number to continue</Text>
+          <Text style={styles.subtitle}>
+            {isNewUser
+              ? 'Fill in your details to get started on RUNDO'
+              : 'Enter your phone number to log in'}
+          </Text>
         </Animated.View>
 
         {/* Card */}
