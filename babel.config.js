@@ -1,6 +1,5 @@
 module.exports = function (api) {
-  api.cache(true);
-  // Reanimated plugin only needed for native (iOS/Android), not web builds
+  // api.caller() auto-handles caching — do not also call api.cache()
   const isWeb = api.caller((caller) => caller && caller.name === 'babel-loader');
   return {
     presets: ['babel-preset-expo'],
