@@ -13,8 +13,9 @@ import TrackingScreen from '../screens/sender/TrackingScreen';
 import AvailableErrandsScreen from '../screens/runner/AvailableErrandsScreen';
 import ActiveErrandScreen from '../screens/runner/ActiveErrandScreen';
 import EarningsScreen from '../screens/runner/EarningsScreen';
+import ProfileScreen from '../screens/shared/ProfileScreen';
 
-import { Colors, FontSize } from '../constants/theme';
+import { Colors } from '../constants/theme';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -67,7 +68,7 @@ function SenderTabs() {
       />
       <Tab.Screen
         name="SenderProfile"
-        component={ProfilePlaceholder}
+        component={ProfileScreen}
         options={{
           tabBarLabel: () => null,
           tabBarIcon: ({ focused }) => <TabIcon icon="👤" label="Profile" focused={focused} />,
@@ -108,7 +109,7 @@ function RunnerTabs() {
       />
       <Tab.Screen
         name="RunnerProfile"
-        component={ProfilePlaceholder}
+        component={ProfileScreen}
         options={{
           tabBarLabel: () => null,
           tabBarIcon: ({ focused }) => <TabIcon icon="👤" label="Profile" focused={focused} />,
@@ -118,15 +119,6 @@ function RunnerTabs() {
   );
 }
 
-function ProfilePlaceholder() {
-  return (
-    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.background }}>
-      <Text style={{ fontSize: 48, marginBottom: 16 }}>👤</Text>
-      <Text style={{ fontSize: FontSize.xl, fontWeight: '700', color: Colors.textPrimary }}>Profile</Text>
-      <Text style={{ fontSize: FontSize.md, color: Colors.textSecondary, marginTop: 8 }}>Coming soon</Text>
-    </View>
-  );
-}
 
 export default function AppNavigator() {
   return (
