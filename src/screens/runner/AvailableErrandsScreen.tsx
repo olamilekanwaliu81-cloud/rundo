@@ -8,7 +8,6 @@ import {
   StatusBar,
 } from 'react-native';
 import { Colors, Spacing, FontSize, Radius, Shadow } from '../../constants/theme';
-import { useStore } from '../../store/useStore';
 import { Errand } from '../../types';
 
 const mockAvailable: Errand[] = [

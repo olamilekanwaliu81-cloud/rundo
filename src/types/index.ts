@@ -70,7 +70,8 @@ export type RootStackParamList = {
   RunnerTabs: undefined;
   ErrandForm: undefined;
   Tracking: { errandId: string };
-  ErrandDetail: { errand: Errand };
   ActiveErrand: { errand: Errand };
-  RateRunner: { errandId: string };
+  // Planned screens (Phase 2):
+  // ErrandDetail: { errand: Errand };
+  // RateRunner: { errandId: string };
 };

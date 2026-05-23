@@ -5,11 +5,8 @@ import {
   StyleSheet,
   TouchableOpacity,
   StatusBar,
-  Dimensions,
 } from 'react-native';
 import { Colors, Spacing, FontSize, Radius } from '../../constants/theme';
-
-const { width, height } = Dimensions.get('window');
 
 export default function WelcomeScreen({ navigation }: any) {
   return (

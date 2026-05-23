@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { User, Runner, Errand, UserRole } from '../types';
+import { User, Errand, UserRole } from '../types';
 
 interface AppState {
   user: User | null;
