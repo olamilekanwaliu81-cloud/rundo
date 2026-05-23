@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,15 +6,17 @@ import {
   TouchableOpacity,
   ScrollView,
   StatusBar,
+  Animated,
 } from 'react-native';
 import { Colors, Spacing, FontSize, Radius, Shadow } from '../../constants/theme';
 import { useStore } from '../../store/useStore';
 import { Errand } from '../../types';
+import { AnimatedCard } from '../../components/AnimatedCard';
 
 const statusColors: Record<string, string> = {
   pending: Colors.warning,
   matched: Colors.primary,
-  in_progress: Colors.primary,
+  in_progress: Colors.primaryVivid,
   delivered: Colors.success,
   confirmed: Colors.success,
   cancelled: Colors.error,
@@ -22,24 +24,30 @@ const statusColors: Record<string, string> = {
 };
 
 const statusLabels: Record<string, string> = {
-  pending: 'Looking for runner',
+  pending: 'Finding runner…',
   matched: 'Runner assigned',
   in_progress: 'On the way',
   delivered: 'Delivered',
-  confirmed: 'Completed',
+  confirmed: 'Completed ✓',
   cancelled: 'Cancelled',
   disputed: 'Disputed',
 };
 
-function ErrandCard({ errand, onPress }: { errand: Errand; onPress: () => void }) {
+function ErrandCard({ errand, onPress, delay }: { errand: Errand; onPress: () => void; delay: number }) {
   return (
-    <TouchableOpacity style={styles.errandCard} onPress={onPress} activeOpacity={0.85}>
+    <AnimatedCard onPress={onPress} delay={delay} style={styles.errandCard}>
       <View style={styles.errandCardHeader}>
-        <View style={[styles.statusDot, { backgroundColor: statusColors[errand.status] }]} />
-        <Text style={styles.errandStatus}>{statusLabels[errand.status]}</Text>
+        <View style={[styles.statusPill, { backgroundColor: statusColors[errand.status] + '22' }]}>
+          <View style={[styles.statusDot, { backgroundColor: statusColors[errand.status] }]} />
+          <Text style={[styles.errandStatus, { color: statusColors[errand.status] }]}>
+            {statusLabels[errand.status]}
+          </Text>
+        </View>
         <Text style={styles.errandPrice}>₦{errand.price.toLocaleString()}</Text>
       </View>
-      <Text style={styles.errandTitle} numberOfLines={1}>{errand.title}</Text>
+      <Text style={styles.errandTitle} numberOfLines={1}>
+        {errand.title}
+      </Text>
       <View style={styles.locationRow}>
         <View style={styles.locationPill}>
           <Text style={styles.locationLabel}>FROM</Text>
@@ -47,7 +55,7 @@ function ErrandCard({ errand, onPress }: { errand: Errand; onPress: () => void }
             {errand.pickupLocation.address}
           </Text>
         </View>
-        <Text style={styles.arrow}>→</Text>
+        <Text style={styles.arrow}>›</Text>
         <View style={styles.locationPill}>
           <Text style={styles.locationLabel}>TO</Text>
           <Text style={styles.locationText} numberOfLines={1}>
@@ -55,9 +63,16 @@ function ErrandCard({ errand, onPress }: { errand: Errand; onPress: () => void }
           </Text>
         </View>
       </View>
-    </TouchableOpacity>
+    </AnimatedCard>
   );
 }
+
+const quickActions = [
+  { emoji: '🏃', label: 'Run\nErrand' },
+  { emoji: '📄', label: 'Pick Up\nDocs' },
+  { emoji: '🛒', label: 'Buy\nItems' },
+  { emoji: '📦', label: 'Receive\nPackage' },
+];
 
 export default function SenderHomeScreen({ navigation }: any) {
   const { user, errands } = useStore();
@@ -66,92 +81,146 @@ export default function SenderHomeScreen({ navigation }: any) {
     ['pending', 'matched', 'in_progress'].includes(e.status)
   );
 
-  const quickActions = [
-    { icon: '🏃', label: 'Run an\nErrand', onPress: () => navigation.navigate('ErrandForm') },
-    { icon: '📄', label: 'Pick up\nDocuments', onPress: () => navigation.navigate('ErrandForm') },
-    { icon: '🛒', label: 'Buy\nGroceries', onPress: () => navigation.navigate('ErrandForm') },
-    { icon: '📦', label: 'Receive\nPackage', onPress: () => navigation.navigate('ErrandForm') },
-  ];
+  const headerOpacity = useRef(new Animated.Value(0)).current;
+  const headerSlide = useRef(new Animated.Value(-16)).current;
+  const postBtnAnim = useRef(new Animated.Value(0)).current;
+  const postBtnScale = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(headerOpacity, { toValue: 1, duration: 450, useNativeDriver: true }),
+      Animated.spring(headerSlide, { toValue: 0, tension: 80, friction: 10, useNativeDriver: true }),
+    ]).start();
+
+    Animated.sequence([
+      Animated.delay(300),
+      Animated.timing(postBtnAnim, { toValue: 1, duration: 400, useNativeDriver: true }),
+    ]).start();
+  }, []);
+
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+
+  const handlePostPressIn = () => {
+    Animated.spring(postBtnScale, { toValue: 0.97, tension: 200, friction: 10, useNativeDriver: true }).start();
+  };
+  const handlePostPressOut = () => {
+    Animated.spring(postBtnScale, { toValue: 1, tension: 200, friction: 10, useNativeDriver: true }).start();
+  };
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={Colors.primary} />
+      <StatusBar barStyle="light-content" backgroundColor={Colors.primaryDark} />
 
       {/* Header */}
       <View style={styles.header}>
-        <View>
-          <Text style={styles.greeting}>Good day 👋</Text>
-          <Text style={styles.userName}>{user?.name || 'Friend'}</Text>
-        </View>
-        <TouchableOpacity style={styles.notifBtn}>
-          <Text style={styles.notifIcon}>🔔</Text>
-          <View style={styles.notifDot} />
-        </TouchableOpacity>
-      </View>
-
-      <ScrollView showsVerticalScrollIndicator={false} style={styles.scroll}>
-        {/* Post errand CTA */}
-        <TouchableOpacity
-          style={styles.postBtn}
-          onPress={() => navigation.navigate('ErrandForm')}
-          activeOpacity={0.9}
+        <Animated.View
+          style={[
+            styles.headerContent,
+            { opacity: headerOpacity, transform: [{ translateY: headerSlide }] },
+          ]}
         >
           <View>
-            <Text style={styles.postBtnLabel}>What do you need done?</Text>
-            <Text style={styles.postBtnSub}>Tap to post an errand</Text>
+            <Text style={styles.greeting}>{greeting} 👋</Text>
+            <Text style={styles.userName}>{user?.name || 'Friend'}</Text>
           </View>
-          <View style={styles.postBtnIcon}>
-            <Text style={{ fontSize: 24 }}>+</Text>
-          </View>
-        </TouchableOpacity>
+          <TouchableOpacity style={styles.notifBtn}>
+            <View style={styles.notifRing}>
+              <Text style={styles.notifIcon}>🔔</Text>
+              <View style={styles.notifDot} />
+            </View>
+          </TouchableOpacity>
+        </Animated.View>
+      </View>
+
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+      >
+        {/* Post errand CTA */}
+        <Animated.View
+          style={{
+            opacity: postBtnAnim,
+            transform: [{ scale: postBtnScale }],
+            marginBottom: Spacing.lg,
+          }}
+        >
+          <TouchableOpacity
+            style={styles.postBtn}
+            onPress={() => navigation.navigate('ErrandForm')}
+            onPressIn={handlePostPressIn}
+            onPressOut={handlePostPressOut}
+            activeOpacity={1}
+          >
+            <View style={styles.postBtnLeft}>
+              <Text style={styles.postBtnLabel}>What do you need done?</Text>
+              <Text style={styles.postBtnSub}>Tap to post an errand now</Text>
+            </View>
+            <View style={styles.postBtnIcon}>
+              <Text style={styles.postBtnPlus}>+</Text>
+            </View>
+          </TouchableOpacity>
+        </Animated.View>
 
         {/* Quick actions */}
-        <Text style={styles.sectionTitle}>Quick Actions</Text>
-        <View style={styles.quickActionsGrid}>
-          {quickActions.map((qa) => (
-            <TouchableOpacity
+        <View style={styles.sectionRow}>
+          <Text style={styles.sectionTitle}>Quick Actions</Text>
+        </View>
+        <View style={styles.quickGrid}>
+          {quickActions.map((qa, i) => (
+            <AnimatedCard
               key={qa.label}
-              style={styles.quickAction}
-              onPress={qa.onPress}
-              activeOpacity={0.8}
+              onPress={() => navigation.navigate('ErrandForm')}
+              delay={i * 60}
+              style={styles.quickCard}
             >
-              <Text style={styles.qaIcon}>{qa.icon}</Text>
+              <Text style={styles.qaEmoji}>{qa.emoji}</Text>
               <Text style={styles.qaLabel}>{qa.label}</Text>
-            </TouchableOpacity>
+            </AnimatedCard>
           ))}
         </View>
 
         {/* Active errands */}
         {activeErrands.length > 0 && (
           <>
-            <Text style={styles.sectionTitle}>Active Errands</Text>
-            {activeErrands.map((errand) => (
+            <View style={styles.sectionRow}>
+              <Text style={styles.sectionTitle}>Active Errands</Text>
+              <View style={styles.activeBadge}>
+                <Text style={styles.activeBadgeText}>{activeErrands.length} live</Text>
+              </View>
+            </View>
+            {activeErrands.map((errand, i) => (
               <ErrandCard
                 key={errand.id}
                 errand={errand}
+                delay={i * 80}
                 onPress={() => navigation.navigate('Tracking', { errandId: errand.id })}
               />
             ))}
           </>
         )}
 
-        {/* Past errands */}
+        {/* Recent errands */}
         <View style={styles.sectionRow}>
           <Text style={styles.sectionTitle}>Recent Errands</Text>
           <TouchableOpacity>
             <Text style={styles.seeAll}>See all</Text>
           </TouchableOpacity>
         </View>
+
         {myErrands.length === 0 ? (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyIcon}>📭</Text>
-            <Text style={styles.emptyText}>No errands yet. Post your first one!</Text>
+            <Text style={styles.emptyEmoji}>📭</Text>
+            <Text style={styles.emptyTitle}>No errands yet</Text>
+            <Text style={styles.emptyText}>Post your first errand and get it done fast.</Text>
           </View>
         ) : (
-          myErrands.map((errand) => (
+          myErrands.map((errand, i) => (
             <ErrandCard
               key={errand.id}
               errand={errand}
+              delay={i * 60}
               onPress={() => navigation.navigate('Tracking', { errandId: errand.id })}
             />
           ))
@@ -165,28 +234,47 @@ export default function SenderHomeScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   header: {
+    backgroundColor: Colors.primaryDark,
+    paddingTop: 56,
+    paddingBottom: Spacing.lg,
+    paddingHorizontal: Spacing.lg,
+  },
+  headerContent: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: Colors.primary,
-    paddingHorizontal: Spacing.lg,
-    paddingTop: 56,
-    paddingBottom: Spacing.lg,
   },
-  greeting: { fontSize: FontSize.sm, color: 'rgba(255,255,255,0.7)', marginBottom: 2 },
+  greeting: {
+    fontSize: FontSize.sm,
+    color: 'rgba(255,255,255,0.65)',
+    marginBottom: 2,
+    fontWeight: '500',
+  },
   userName: { fontSize: FontSize.xl, fontWeight: '800', color: Colors.white },
-  notifBtn: { position: 'relative', padding: Spacing.xs },
-  notifIcon: { fontSize: 22 },
+  notifBtn: {},
+  notifRing: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+  },
+  notifIcon: { fontSize: 20 },
   notifDot: {
     position: 'absolute',
-    top: 6,
-    right: 6,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    top: 10,
+    right: 10,
+    width: 9,
+    height: 9,
+    borderRadius: 5,
     backgroundColor: Colors.accent,
+    borderWidth: 1.5,
+    borderColor: Colors.primaryDark,
   },
-  scroll: { flex: 1, padding: Spacing.lg },
+  scroll: { flex: 1 },
+  scrollContent: { padding: Spacing.lg, paddingTop: Spacing.lg },
   postBtn: {
     backgroundColor: Colors.primary,
     borderRadius: Radius.xl,
@@ -194,55 +282,65 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: Spacing.lg,
-    marginTop: -Spacing.sm,
     ...Shadow.strong,
   },
-  postBtnLabel: { fontSize: FontSize.lg, fontWeight: '700', color: Colors.white },
-  postBtnSub: { fontSize: FontSize.sm, color: 'rgba(255,255,255,0.7)', marginTop: 2 },
+  postBtnLeft: { flex: 1 },
+  postBtnLabel: { fontSize: FontSize.lg, fontWeight: '800', color: Colors.white, marginBottom: 3 },
+  postBtnSub: { fontSize: FontSize.sm, color: 'rgba(255,255,255,0.65)' },
   postBtnIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: Colors.accent,
     justifyContent: 'center',
     alignItems: 'center',
+    marginLeft: Spacing.md,
   },
-  sectionTitle: {
-    fontSize: FontSize.lg,
-    fontWeight: '700',
-    color: Colors.textPrimary,
-    marginBottom: Spacing.md,
-    marginTop: Spacing.sm,
-  },
+  postBtnPlus: { fontSize: 28, color: Colors.primaryDeep, fontWeight: '900', lineHeight: 32 },
   sectionRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: Spacing.md,
-    marginTop: Spacing.sm,
+    marginTop: Spacing.xs,
+  },
+  sectionTitle: {
+    fontSize: FontSize.lg,
+    fontWeight: '700',
+    color: Colors.textPrimary,
   },
   seeAll: { fontSize: FontSize.sm, color: Colors.primary, fontWeight: '600' },
-  quickActionsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.sm,
-    marginBottom: Spacing.sm,
+  activeBadge: {
+    backgroundColor: Colors.success + '22',
+    borderRadius: Radius.full,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 3,
   },
-  quickAction: {
-    width: '22%',
+  activeBadgeText: {
+    fontSize: FontSize.xs,
+    fontWeight: '700',
+    color: Colors.success,
+  },
+  quickGrid: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+    marginBottom: Spacing.lg,
+  },
+  quickCard: {
+    flex: 1,
     backgroundColor: Colors.white,
     borderRadius: Radius.lg,
-    padding: Spacing.sm,
+    padding: Spacing.md,
     alignItems: 'center',
-    ...Shadow.card,
+    ...Shadow.xs,
   },
-  qaIcon: { fontSize: 24, marginBottom: 4 },
+  qaEmoji: { fontSize: 26, marginBottom: 6 },
   qaLabel: {
     fontSize: FontSize.xs,
     color: Colors.textSecondary,
     textAlign: 'center',
     fontWeight: '600',
+    lineHeight: 16,
   },
   errandCard: {
     backgroundColor: Colors.white,
@@ -254,11 +352,20 @@ const styles = StyleSheet.create({
   errandCardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: Spacing.xs,
   },
-  statusDot: { width: 8, height: 8, borderRadius: 4, marginRight: 6 },
-  errandStatus: { fontSize: FontSize.xs, color: Colors.textSecondary, flex: 1 },
-  errandPrice: { fontSize: FontSize.md, fontWeight: '700', color: Colors.primary },
+  statusPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: Radius.full,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    gap: 5,
+  },
+  statusDot: { width: 7, height: 7, borderRadius: 4 },
+  errandStatus: { fontSize: FontSize.xs, fontWeight: '700' },
+  errandPrice: { fontSize: FontSize.md, fontWeight: '800', color: Colors.primary },
   errandTitle: {
     fontSize: FontSize.md,
     fontWeight: '700',
@@ -270,11 +377,39 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 4,
   },
-  locationPill: { flex: 1, backgroundColor: Colors.background, borderRadius: Radius.sm, padding: 6 },
-  locationLabel: { fontSize: 9, fontWeight: '700', color: Colors.textMuted, marginBottom: 1 },
+  locationPill: {
+    flex: 1,
+    backgroundColor: Colors.background,
+    borderRadius: Radius.sm,
+    padding: 7,
+  },
+  locationLabel: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: Colors.textMuted,
+    marginBottom: 1,
+    letterSpacing: 0.5,
+  },
   locationText: { fontSize: FontSize.xs, color: Colors.textSecondary },
-  arrow: { fontSize: 16, color: Colors.textMuted, paddingHorizontal: 2 },
-  emptyState: { alignItems: 'center', paddingVertical: Spacing.xxl },
-  emptyIcon: { fontSize: 48, marginBottom: Spacing.md },
-  emptyText: { fontSize: FontSize.md, color: Colors.textSecondary },
+  arrow: { fontSize: 18, color: Colors.textMuted, paddingHorizontal: 2 },
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: Spacing.xxl,
+    backgroundColor: Colors.white,
+    borderRadius: Radius.xl,
+    ...Shadow.xs,
+  },
+  emptyEmoji: { fontSize: 52, marginBottom: Spacing.md },
+  emptyTitle: {
+    fontSize: FontSize.lg,
+    fontWeight: '700',
+    color: Colors.textPrimary,
+    marginBottom: 6,
+  },
+  emptyText: {
+    fontSize: FontSize.md,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    paddingHorizontal: Spacing.lg,
+  },
 });

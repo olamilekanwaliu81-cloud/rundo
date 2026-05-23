@@ -1,80 +1,215 @@
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import {
+  Animated,
   View,
   Text,
   StyleSheet,
-  TouchableOpacity,
   StatusBar,
+  Dimensions,
 } from 'react-native';
-import { Colors, Spacing, FontSize, Radius } from '../../constants/theme';
+import { Colors, FontSize, Radius, Spacing } from '../../constants/theme';
+import { PremiumButton } from '../../components/PremiumButton';
+
+const { width, height } = Dimensions.get('window');
+
+function FloatingOrb({
+  size,
+  color,
+  x,
+  y,
+  delay,
+  duration,
+}: {
+  size: number;
+  color: string;
+  x: number;
+  y: number;
+  delay: number;
+  duration: number;
+}) {
+  const floatAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(floatAnim, {
+          toValue: 1,
+          duration,
+          useNativeDriver: true,
+          delay,
+        }),
+        Animated.timing(floatAnim, {
+          toValue: 0,
+          duration,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+  }, []);
+
+  const translateY = floatAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, -22],
+  });
+
+  return (
+    <Animated.View
+      style={{
+        position: 'absolute',
+        width: size,
+        height: size,
+        borderRadius: size / 2,
+        backgroundColor: color,
+        left: x,
+        top: y,
+        transform: [{ translateY }],
+      }}
+    />
+  );
+}
 
 export default function WelcomeScreen({ navigation }: any) {
+  const logoOpacity = useRef(new Animated.Value(0)).current;
+  const logoScale = useRef(new Animated.Value(0.72)).current;
+  const contentSlide = useRef(new Animated.Value(48)).current;
+  const contentOpacity = useRef(new Animated.Value(0)).current;
+  const ctaSlide = useRef(new Animated.Value(64)).current;
+  const ctaOpacity = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.sequence([
+      Animated.parallel([
+        Animated.timing(logoOpacity, {
+          toValue: 1,
+          duration: 650,
+          useNativeDriver: true,
+        }),
+        Animated.spring(logoScale, {
+          toValue: 1,
+          tension: 70,
+          friction: 8,
+          useNativeDriver: true,
+        }),
+      ]),
+      Animated.parallel([
+        Animated.spring(contentSlide, {
+          toValue: 0,
+          tension: 80,
+          friction: 10,
+          useNativeDriver: true,
+        }),
+        Animated.timing(contentOpacity, {
+          toValue: 1,
+          duration: 450,
+          useNativeDriver: true,
+        }),
+      ]),
+      Animated.parallel([
+        Animated.spring(ctaSlide, {
+          toValue: 0,
+          tension: 80,
+          friction: 10,
+          useNativeDriver: true,
+        }),
+        Animated.timing(ctaOpacity, {
+          toValue: 1,
+          duration: 400,
+          useNativeDriver: true,
+        }),
+      ]),
+    ]).start();
+  }, []);
+
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={Colors.primary} />
+      <StatusBar barStyle="light-content" backgroundColor={Colors.primaryDeep} />
 
-      {/* Background decoration */}
-      <View style={styles.topCircle} />
-      <View style={styles.bottomCircle} />
+      {/* Ambient orbs */}
+      <FloatingOrb
+        size={300}
+        color="rgba(27,107,69,0.4)"
+        x={-90}
+        y={-80}
+        delay={0}
+        duration={3200}
+      />
+      <FloatingOrb
+        size={180}
+        color="rgba(34,197,122,0.18)"
+        x={width - 100}
+        y={height * 0.28}
+        delay={600}
+        duration={2800}
+      />
+      <FloatingOrb
+        size={140}
+        color="rgba(245,165,35,0.12)"
+        x={50}
+        y={height * 0.52}
+        delay={1100}
+        duration={3600}
+      />
 
-      {/* Logo section */}
-      <View style={styles.logoSection}>
-        <View style={styles.iconContainer}>
-          <View style={styles.runnerIcon}>
-            {/* Abstract runner: head */}
-            <View style={styles.runnerHead} />
-            {/* Body */}
-            <View style={styles.runnerBody} />
-            {/* Arms */}
-            <View style={[styles.runnerArm, styles.armLeft]} />
-            <View style={[styles.runnerArm, styles.armRight]} />
-            {/* Legs */}
-            <View style={[styles.runnerLeg, styles.legLeft]} />
-            <View style={[styles.runnerLeg, styles.legRight]} />
+      {/* Logo */}
+      <Animated.View
+        style={[
+          styles.logoSection,
+          { opacity: logoOpacity, transform: [{ scale: logoScale }] },
+        ]}
+      >
+        <View style={styles.logoRing}>
+          <View style={styles.logoInner}>
+            <Text style={styles.logoLetter}>R</Text>
           </View>
         </View>
-
         <Text style={styles.brandName}>RUNDO</Text>
         <Text style={styles.tagline}>Run It. Trust It. Done.</Text>
-      </View>
+      </Animated.View>
 
-      {/* Description */}
-      <View style={styles.descSection}>
-        <Text style={styles.descTitle}>Nigeria's Errand Marketplace</Text>
-        <Text style={styles.descText}>
-          Send an errand. Get it done by a verified local runner near you — tracked live,
-          paid securely.
+      {/* Hero copy */}
+      <Animated.View
+        style={[
+          styles.contentSection,
+          {
+            opacity: contentOpacity,
+            transform: [{ translateY: contentSlide }],
+          },
+        ]}
+      >
+        <Text style={styles.headline}>Nigeria's First{'\n'}Errand Marketplace</Text>
+        <Text style={styles.subHeadline}>
+          Post tasks, find trusted runners near you — tracked live, paid securely.
         </Text>
 
         <View style={styles.pillsRow}>
-          {['Verified Runners', 'Live GPS', 'Escrow Pay'].map((label) => (
+          {['✓  Verified Runners', '📍  Live GPS', '🔒  Escrow Pay'].map((label) => (
             <View key={label} style={styles.pill}>
               <Text style={styles.pillText}>{label}</Text>
             </View>
           ))}
         </View>
-      </View>
+      </Animated.View>
 
-      {/* CTA buttons */}
-      <View style={styles.ctaSection}>
-        <TouchableOpacity
-          style={styles.primaryBtn}
+      {/* CTAs */}
+      <Animated.View
+        style={[
+          styles.ctaSection,
+          { opacity: ctaOpacity, transform: [{ translateY: ctaSlide }] },
+        ]}
+      >
+        <PremiumButton
+          label="Get Started Free"
+          variant="accent"
           onPress={() => navigation.navigate('Login')}
-          activeOpacity={0.85}
-        >
-          <Text style={styles.primaryBtnText}>Get Started</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.secondaryBtn}
+          style={{ marginBottom: Spacing.sm }}
+        />
+        <PremiumButton
+          label="I already have an account"
+          variant="ghost"
           onPress={() => navigation.navigate('Login')}
-          activeOpacity={0.85}
-        >
-          <Text style={styles.secondaryBtnText}>I already have an account</Text>
-        </TouchableOpacity>
-      </View>
-
-      <Text style={styles.footer}>Lagos · Abuja · Port Harcourt · Ibadan</Text>
+        />
+        <Text style={styles.footer}>Lagos · Abuja · Port Harcourt · Ibadan</Text>
+      </Animated.View>
     </View>
   );
 }
@@ -82,170 +217,102 @@ export default function WelcomeScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.primary,
+    backgroundColor: Colors.primaryDeep,
     paddingHorizontal: Spacing.lg,
-    paddingTop: 60,
+    paddingTop: 70,
     paddingBottom: Spacing.xl,
-  },
-  topCircle: {
-    position: 'absolute',
-    top: -80,
-    right: -80,
-    width: 280,
-    height: 280,
-    borderRadius: 140,
-    backgroundColor: Colors.primaryDark,
-    opacity: 0.4,
-  },
-  bottomCircle: {
-    position: 'absolute',
-    bottom: -120,
-    left: -60,
-    width: 320,
-    height: 320,
-    borderRadius: 160,
-    backgroundColor: Colors.primaryDark,
-    opacity: 0.3,
+    overflow: 'hidden',
   },
   logoSection: {
     alignItems: 'center',
-    marginTop: 40,
+    marginTop: Spacing.lg,
     marginBottom: Spacing.xl,
   },
-  iconContainer: {
-    width: 90,
-    height: 90,
-    borderRadius: 22,
-    backgroundColor: Colors.accent,
+  logoRing: {
+    width: 100,
+    height: 100,
+    borderRadius: 26,
+    borderWidth: 2,
+    borderColor: 'rgba(34,197,122,0.45)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: Spacing.md,
+    marginBottom: Spacing.lg,
   },
-  runnerIcon: {
-    width: 48,
-    height: 56,
-    position: 'relative',
+  logoInner: {
+    width: 76,
+    height: 76,
+    borderRadius: 18,
+    backgroundColor: Colors.primaryVivid,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  runnerHead: {
-    position: 'absolute',
-    top: 0,
-    left: 16,
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    backgroundColor: Colors.white,
+  logoLetter: {
+    fontSize: 38,
+    fontWeight: '900',
+    color: Colors.primaryDeep,
+    letterSpacing: -1,
   },
-  runnerBody: {
-    position: 'absolute',
-    top: 16,
-    left: 18,
-    width: 10,
-    height: 18,
-    borderRadius: 5,
-    backgroundColor: Colors.white,
-  },
-  runnerArm: {
-    position: 'absolute',
-    top: 18,
-    width: 14,
-    height: 5,
-    borderRadius: 2.5,
-    backgroundColor: Colors.white,
-  },
-  armLeft: { left: 4, transform: [{ rotate: '-30deg' }] },
-  armRight: { right: 2, transform: [{ rotate: '30deg' }] },
-  runnerLeg: {
-    position: 'absolute',
-    bottom: 0,
-    width: 6,
-    height: 20,
-    borderRadius: 3,
-    backgroundColor: Colors.white,
-  },
-  legLeft: { left: 14, transform: [{ rotate: '-15deg' }] },
-  legRight: { right: 14, transform: [{ rotate: '15deg' }] },
   brandName: {
-    fontSize: 48,
+    fontSize: 46,
     fontWeight: '900',
     color: Colors.white,
-    letterSpacing: 6,
-    marginBottom: 4,
+    letterSpacing: 10,
+    marginBottom: 6,
   },
   tagline: {
     fontSize: FontSize.md,
-    color: Colors.accent,
+    color: Colors.primaryVivid,
     fontStyle: 'italic',
     letterSpacing: 0.5,
   },
-  descSection: {
+  contentSection: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: Spacing.sm,
+    paddingHorizontal: Spacing.xs,
   },
-  descTitle: {
-    fontSize: FontSize.xl,
-    fontWeight: '700',
+  headline: {
+    fontSize: FontSize.xxl,
+    fontWeight: '800',
     color: Colors.white,
     textAlign: 'center',
+    lineHeight: 36,
     marginBottom: Spacing.md,
   },
-  descText: {
+  subHeadline: {
     fontSize: FontSize.md,
-    color: 'rgba(255,255,255,0.8)',
+    color: 'rgba(255,255,255,0.6)',
     textAlign: 'center',
     lineHeight: 24,
     marginBottom: Spacing.lg,
   },
   pillsRow: {
     flexDirection: 'row',
-    gap: Spacing.sm,
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: Spacing.xs,
   },
   pill: {
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: 'rgba(255,255,255,0.09)',
     borderRadius: Radius.full,
     paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.xs,
+    paddingVertical: 7,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.25)',
+    borderColor: 'rgba(255,255,255,0.18)',
   },
   pillText: {
-    color: Colors.white,
+    color: 'rgba(255,255,255,0.82)',
     fontSize: FontSize.xs,
     fontWeight: '600',
   },
   ctaSection: {
     gap: Spacing.sm,
-    marginBottom: Spacing.lg,
-  },
-  primaryBtn: {
-    backgroundColor: Colors.accent,
-    borderRadius: Radius.lg,
-    paddingVertical: 18,
-    alignItems: 'center',
-  },
-  primaryBtnText: {
-    color: Colors.dark,
-    fontSize: FontSize.lg,
-    fontWeight: '800',
-    letterSpacing: 0.5,
-  },
-  secondaryBtn: {
-    borderRadius: Radius.lg,
-    paddingVertical: 14,
-    alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.4)',
-  },
-  secondaryBtnText: {
-    color: Colors.white,
-    fontSize: FontSize.md,
-    fontWeight: '600',
   },
   footer: {
     textAlign: 'center',
-    color: 'rgba(255,255,255,0.45)',
+    color: 'rgba(255,255,255,0.3)',
     fontSize: FontSize.xs,
-    letterSpacing: 1,
+    letterSpacing: 1.5,
+    marginTop: Spacing.md,
   },
 });

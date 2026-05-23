@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,17 +7,18 @@ import {
   StatusBar,
   ScrollView,
   Alert,
-  Image,
+  Animated,
 } from 'react-native';
 import { Colors, Spacing, FontSize, Radius, Shadow } from '../../constants/theme';
+import { PremiumButton } from '../../components/PremiumButton';
 
 const phases = [
-  { id: 'accepted', label: 'Errand Accepted', done: true },
-  { id: 'heading', label: 'Heading to Pickup', done: true },
-  { id: 'pickup_photo', label: 'Photo at Pickup', done: false },
-  { id: 'in_transit', label: 'In Transit', done: false },
-  { id: 'dropoff_photo', label: 'Photo at Drop-off', done: false },
-  { id: 'done', label: 'Confirmed & Paid', done: false },
+  { id: 'accepted', label: 'Errand Accepted' },
+  { id: 'heading', label: 'Heading to Pickup' },
+  { id: 'pickup_photo', label: 'Photo at Pickup' },
+  { id: 'in_transit', label: 'In Transit' },
+  { id: 'dropoff_photo', label: 'Photo at Drop-off' },
+  { id: 'done', label: 'Confirmed & Paid' },
 ];
 
 export default function ActiveErrandScreen({ route, navigation }: any) {
@@ -32,8 +33,25 @@ export default function ActiveErrandScreen({ route, navigation }: any) {
   };
 
   const [phase, setPhase] = useState(1);
-  const [pickupPhoto, setPickupPhoto] = useState<string | null>(null);
-  const [dropoffPhoto, setDropoffPhoto] = useState<string | null>(null);
+  const [pickupPhoto, setPickupPhoto] = useState(false);
+  const [dropoffPhoto, setDropoffPhoto] = useState(false);
+
+  const headerOpacity = useRef(new Animated.Value(0)).current;
+  const earningsAnim = useRef(new Animated.Value(0.8)).current;
+  const earningsOpacity = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(headerOpacity, { toValue: 1, duration: 400, useNativeDriver: true }),
+      Animated.spring(earningsAnim, {
+        toValue: 1,
+        tension: 80,
+        friction: 8,
+        useNativeDriver: true,
+      }),
+      Animated.timing(earningsOpacity, { toValue: 1, duration: 500, useNativeDriver: true }),
+    ]).start();
+  }, []);
 
   const handleTakePhoto = (type: 'pickup' | 'dropoff') => {
     Alert.alert(
@@ -44,13 +62,11 @@ export default function ActiveErrandScreen({ route, navigation }: any) {
         {
           text: 'Take Photo',
           onPress: () => {
-            // In production: expo-camera or expo-image-picker
-            const mockPhoto = 'https://via.placeholder.com/300x200';
             if (type === 'pickup') {
-              setPickupPhoto(mockPhoto);
+              setPickupPhoto(true);
               setPhase(3);
             } else {
-              setDropoffPhoto(mockPhoto);
+              setDropoffPhoto(true);
               setPhase(5);
             }
           },
@@ -61,67 +77,96 @@ export default function ActiveErrandScreen({ route, navigation }: any) {
 
   const handleComplete = () => {
     Alert.alert(
-      '✅ Errand Complete!',
+      '🎉 Errand Complete!',
       `₦${(errand.price * 0.8).toLocaleString()} will be released to your wallet once the sender confirms.`,
       [{ text: 'View Earnings', onPress: () => navigation.navigate('Earnings') }]
     );
   };
 
   const ctaConfig = [
-    { label: 'Navigate to Pickup →', action: () => setPhase(2) },
-    { label: '📍 I\'m at Pickup — Take Photo', action: () => handleTakePhoto('pickup') },
-    { label: 'Navigate to Drop-off →', action: () => setPhase(4) },
-    { label: '📍 I\'m at Drop-off — Take Photo', action: () => handleTakePhoto('dropoff') },
-    { label: '✅ Mark as Delivered', action: handleComplete },
+    { label: 'Navigate to Pickup  →', action: () => setPhase(2), variant: 'primary' as const },
+    {
+      label: '📍  I\'m at Pickup — Take Photo',
+      action: () => handleTakePhoto('pickup'),
+      variant: 'primary' as const,
+    },
+    { label: 'Navigate to Drop-off  →', action: () => setPhase(4), variant: 'primary' as const },
+    {
+      label: '📍  I\'m at Drop-off — Take Photo',
+      action: () => handleTakePhoto('dropoff'),
+      variant: 'primary' as const,
+    },
+    {
+      label: '✅  Mark as Delivered',
+      action: handleComplete,
+      variant: 'accent' as const,
+    },
   ];
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor={Colors.background} />
+      <StatusBar barStyle="light-content" backgroundColor={Colors.primaryDark} />
 
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
+      {/* Header */}
+      <Animated.View style={[styles.header, { opacity: headerOpacity }]}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Text style={styles.backArrow}>←</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Active Errand</Text>
         <TouchableOpacity style={styles.sosBtn}>
           <Text style={styles.sosText}>SOS</Text>
         </TouchableOpacity>
-      </View>
+      </Animated.View>
 
-      <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
-        {/* Earnings bar */}
-        <View style={styles.earningsBar}>
-          <Text style={styles.earningsLabel}>You earn</Text>
+      {/* Earnings banner */}
+      <Animated.View
+        style={[
+          styles.earningsBanner,
+          { opacity: earningsOpacity, transform: [{ scale: earningsAnim }] },
+        ]}
+      >
+        <View style={styles.earningsLeft}>
+          <Text style={styles.earningsLabel}>You earn for this errand</Text>
           <Text style={styles.earningsAmount}>₦{(errand.price * 0.8).toLocaleString()}</Text>
-          <View style={styles.escrowBadge}>
-            <Text style={styles.escrowText}>🔒 In Escrow</Text>
-          </View>
         </View>
+        <View style={styles.escrowBadge}>
+          <Text style={styles.escrowEmoji}>🔒</Text>
+          <Text style={styles.escrowText}>In Escrow</Text>
+        </View>
+      </Animated.View>
 
-        {/* Errand info */}
+      <ScrollView
+        style={styles.scroll}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
+        {/* Errand info card */}
         <View style={styles.errandCard}>
           <Text style={styles.errandTitle}>{errand.title}</Text>
           <Text style={styles.errandDesc}>{errand.description}</Text>
 
-          <View style={styles.locationBlock}>
-            <View style={styles.locRow}>
-              <View style={[styles.locIcon, { backgroundColor: Colors.primaryLight }]}>
-                <Text style={styles.locEmoji}>📍</Text>
+          <View style={styles.routeBlock}>
+            <View style={styles.routeRow}>
+              <View style={[styles.routeIconCircle, { backgroundColor: Colors.primaryLight }]}>
+                <Text style={styles.routeEmoji}>📍</Text>
               </View>
-              <View>
-                <Text style={styles.locLabel}>PICKUP</Text>
-                <Text style={styles.locAddress}>{errand.pickupLocation.address}</Text>
+              <View style={styles.routeDetails}>
+                <Text style={styles.routeMiniLabel}>PICKUP</Text>
+                <Text style={styles.routeAddress}>{errand.pickupLocation.address}</Text>
               </View>
             </View>
-            <View style={styles.locConnector} />
-            <View style={styles.locRow}>
-              <View style={[styles.locIcon, { backgroundColor: Colors.accentLight }]}>
-                <Text style={styles.locEmoji}>🎯</Text>
+
+            <View style={styles.routeConnector}>
+              <View style={styles.routeLine} />
+            </View>
+
+            <View style={styles.routeRow}>
+              <View style={[styles.routeIconCircle, { backgroundColor: Colors.accentLight }]}>
+                <Text style={styles.routeEmoji}>🎯</Text>
               </View>
-              <View>
-                <Text style={styles.locLabel}>DROP-OFF</Text>
-                <Text style={styles.locAddress}>{errand.dropoffLocation.address}</Text>
+              <View style={styles.routeDetails}>
+                <Text style={styles.routeMiniLabel}>DROP-OFF</Text>
+                <Text style={styles.routeAddress}>{errand.dropoffLocation.address}</Text>
               </View>
             </View>
           </View>
@@ -135,15 +180,34 @@ export default function ActiveErrandScreen({ route, navigation }: any) {
             const current = i === phase;
             return (
               <View key={p.id} style={styles.phaseRow}>
-                <View style={[styles.phaseDot, done && styles.phaseDotDone, current && styles.phaseDotCurrent]}>
-                  <Text style={[styles.phaseDotText, (done || current) && { color: Colors.white }]}>
-                    {done ? '✓' : (i + 1).toString()}
-                  </Text>
+                <View style={styles.phaseLeft}>
+                  <View
+                    style={[
+                      styles.phaseDot,
+                      done && styles.phaseDotDone,
+                      current && styles.phaseDotCurrent,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.phaseDotText,
+                        (done || current) && { color: Colors.white },
+                      ]}
+                    >
+                      {done ? '✓' : (i + 1).toString()}
+                    </Text>
+                  </View>
+                  {i < phases.length - 1 && (
+                    <View style={[styles.phaseLine, done && styles.phaseLineDone]} />
+                  )}
                 </View>
-                {i < phases.length - 1 && (
-                  <View style={[styles.phaseLine, done && styles.phaseLineDone]} />
-                )}
-                <Text style={[styles.phaseLabel, done && styles.phaseLabelDone, current && styles.phaseLabelCurrent]}>
+                <Text
+                  style={[
+                    styles.phaseLabel,
+                    done && styles.phaseLabelDone,
+                    current && styles.phaseLabelCurrent,
+                  ]}
+                >
                   {p.label}
                 </Text>
               </View>
@@ -151,23 +215,25 @@ export default function ActiveErrandScreen({ route, navigation }: any) {
           })}
         </View>
 
-        {/* Photos */}
+        {/* Photos captured */}
         {(pickupPhoto || dropoffPhoto) && (
           <View style={styles.photosSection}>
-            <Text style={styles.sectionTitle}>Photos</Text>
+            <Text style={styles.sectionTitle}>Photos Taken</Text>
             <View style={styles.photosRow}>
               {pickupPhoto && (
                 <View style={styles.photoCard}>
-                  <View style={styles.photoPlaceholder}>
-                    <Text style={styles.photoPlaceholderText}>📸 Pickup Photo\nCaptured</Text>
+                  <View style={[styles.photoPlaceholder, { borderColor: Colors.primary }]}>
+                    <Text style={styles.photoEmoji}>📸</Text>
+                    <Text style={styles.photoCardText}>Pickup Photo{'\n'}Captured ✓</Text>
                   </View>
                   <Text style={styles.photoLabel}>Pickup</Text>
                 </View>
               )}
               {dropoffPhoto && (
                 <View style={styles.photoCard}>
-                  <View style={[styles.photoPlaceholder, { backgroundColor: Colors.accentLight }]}>
-                    <Text style={styles.photoPlaceholderText}>📸 Drop-off Photo\nCaptured</Text>
+                  <View style={[styles.photoPlaceholder, { borderColor: Colors.accent }]}>
+                    <Text style={styles.photoEmoji}>📸</Text>
+                    <Text style={styles.photoCardText}>Drop-off Photo{'\n'}Captured ✓</Text>
                   </View>
                   <Text style={styles.photoLabel}>Drop-off</Text>
                 </View>
@@ -179,16 +245,14 @@ export default function ActiveErrandScreen({ route, navigation }: any) {
         <View style={{ height: 120 }} />
       </ScrollView>
 
-      {/* CTA */}
+      {/* CTA Footer */}
       {phase < ctaConfig.length && (
         <View style={styles.footer}>
-          <TouchableOpacity
-            style={styles.ctaBtn}
+          <PremiumButton
+            label={ctaConfig[phase].label}
+            variant={ctaConfig[phase].variant}
             onPress={ctaConfig[phase].action}
-            activeOpacity={0.85}
-          >
-            <Text style={styles.ctaBtnText}>{ctaConfig[phase].label}</Text>
-          </TouchableOpacity>
+          />
         </View>
       )}
     </View>
@@ -200,24 +264,30 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.white,
+    backgroundColor: Colors.primaryDark,
     paddingHorizontal: Spacing.lg,
     paddingTop: 56,
     paddingBottom: Spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
   },
-  backArrow: { fontSize: 24, color: Colors.textPrimary, marginRight: Spacing.md },
-  headerTitle: { flex: 1, fontSize: FontSize.lg, fontWeight: '700', color: Colors.textPrimary },
+  backBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: Spacing.md,
+  },
+  backArrow: { fontSize: 18, color: Colors.white },
+  headerTitle: { flex: 1, fontSize: FontSize.lg, fontWeight: '700', color: Colors.white },
   sosBtn: {
     backgroundColor: Colors.error,
     borderRadius: Radius.sm,
     paddingHorizontal: Spacing.md,
-    paddingVertical: 6,
+    paddingVertical: 7,
   },
-  sosText: { color: Colors.white, fontWeight: '800', fontSize: FontSize.sm },
-  scroll: { flex: 1 },
-  earningsBar: {
+  sosText: { color: Colors.white, fontWeight: '900', fontSize: FontSize.sm },
+  earningsBanner: {
     backgroundColor: Colors.primary,
     flexDirection: 'row',
     alignItems: 'center',
@@ -225,88 +295,146 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.md,
     gap: Spacing.sm,
   },
-  earningsLabel: { fontSize: FontSize.sm, color: 'rgba(255,255,255,0.7)', flex: 1 },
-  earningsAmount: { fontSize: FontSize.xl, fontWeight: '800', color: Colors.white },
+  earningsLeft: { flex: 1 },
+  earningsLabel: { fontSize: FontSize.xs, color: 'rgba(255,255,255,0.7)', marginBottom: 2 },
+  earningsAmount: { fontSize: FontSize.xl, fontWeight: '900', color: Colors.white },
   escrowBadge: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: 'rgba(255,255,255,0.15)',
     borderRadius: Radius.full,
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 4,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 7,
   },
-  escrowText: { fontSize: FontSize.xs, color: Colors.white, fontWeight: '600' },
+  escrowEmoji: { fontSize: 13 },
+  escrowText: { fontSize: FontSize.xs, color: Colors.white, fontWeight: '700' },
+  scroll: { flex: 1 },
+  scrollContent: { padding: Spacing.lg },
   errandCard: {
     backgroundColor: Colors.white,
-    margin: Spacing.lg,
-    borderRadius: Radius.xl,
-    padding: Spacing.lg,
-    ...Shadow.card,
-  },
-  errandTitle: { fontSize: FontSize.lg, fontWeight: '800', color: Colors.textPrimary, marginBottom: 6 },
-  errandDesc: { fontSize: FontSize.sm, color: Colors.textSecondary, lineHeight: 20, marginBottom: Spacing.lg },
-  locationBlock: {},
-  locRow: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.md },
-  locIcon: { width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center' },
-  locEmoji: { fontSize: 18 },
-  locConnector: { width: 2, height: 20, backgroundColor: Colors.border, marginLeft: 17, marginVertical: 4 },
-  locLabel: { fontSize: 10, fontWeight: '700', color: Colors.textMuted, letterSpacing: 1, marginBottom: 2 },
-  locAddress: { fontSize: FontSize.md, fontWeight: '600', color: Colors.textPrimary },
-  sectionTitle: {
-    fontSize: FontSize.lg,
-    fontWeight: '700',
-    color: Colors.textPrimary,
-    paddingHorizontal: Spacing.lg,
-    marginBottom: Spacing.md,
-  },
-  progressCard: {
-    backgroundColor: Colors.white,
-    marginHorizontal: Spacing.lg,
     borderRadius: Radius.xl,
     padding: Spacing.lg,
     marginBottom: Spacing.lg,
     ...Shadow.card,
   },
-  phaseRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 4 },
+  errandTitle: {
+    fontSize: FontSize.lg,
+    fontWeight: '800',
+    color: Colors.textPrimary,
+    marginBottom: 6,
+  },
+  errandDesc: {
+    fontSize: FontSize.sm,
+    color: Colors.textSecondary,
+    lineHeight: 20,
+    marginBottom: Spacing.lg,
+  },
+  routeBlock: {},
+  routeRow: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.md },
+  routeIconCircle: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  routeEmoji: { fontSize: 18 },
+  routeDetails: { flex: 1, paddingTop: 2 },
+  routeMiniLabel: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: Colors.textMuted,
+    letterSpacing: 0.8,
+    marginBottom: 3,
+  },
+  routeAddress: {
+    fontSize: FontSize.md,
+    fontWeight: '600',
+    color: Colors.textPrimary,
+    lineHeight: 20,
+  },
+  routeConnector: { paddingLeft: 18, paddingVertical: 4 },
+  routeLine: { width: 2, height: 20, backgroundColor: Colors.border },
+  sectionTitle: {
+    fontSize: FontSize.lg,
+    fontWeight: '700',
+    color: Colors.textPrimary,
+    marginBottom: Spacing.md,
+  },
+  progressCard: {
+    backgroundColor: Colors.white,
+    borderRadius: Radius.xl,
+    padding: Spacing.lg,
+    marginBottom: Spacing.lg,
+    ...Shadow.card,
+  },
+  phaseRow: { flexDirection: 'row', alignItems: 'flex-start' },
+  phaseLeft: { alignItems: 'center', marginRight: Spacing.md },
   phaseDot: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     backgroundColor: Colors.border,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: Spacing.md,
   },
   phaseDotDone: { backgroundColor: Colors.primary },
   phaseDotCurrent: { backgroundColor: Colors.accent },
-  phaseDotText: { fontSize: FontSize.xs, fontWeight: '700', color: Colors.textMuted },
-  phaseLine: { position: 'absolute', left: 13, top: 28, width: 2, height: 20, backgroundColor: Colors.border },
+  phaseDotText: {
+    fontSize: FontSize.xs,
+    fontWeight: '800',
+    color: Colors.textMuted,
+  },
+  phaseLine: {
+    width: 2,
+    height: 22,
+    backgroundColor: Colors.border,
+    marginTop: 3,
+  },
   phaseLineDone: { backgroundColor: Colors.primary },
-  phaseLabel: { fontSize: FontSize.md, color: Colors.textMuted, paddingTop: 4 },
+  phaseLabel: {
+    fontSize: FontSize.md,
+    color: Colors.textMuted,
+    paddingTop: 6,
+    flex: 1,
+    lineHeight: 22,
+    paddingBottom: 12,
+  },
   phaseLabelDone: { color: Colors.textSecondary },
   phaseLabelCurrent: { color: Colors.textPrimary, fontWeight: '700' },
   photosSection: { marginBottom: Spacing.lg },
-  photosRow: { flexDirection: 'row', gap: Spacing.md, paddingHorizontal: Spacing.lg },
+  photosRow: { flexDirection: 'row', gap: Spacing.md },
   photoCard: { flex: 1 },
   photoPlaceholder: {
-    backgroundColor: Colors.primaryLight,
+    backgroundColor: Colors.background,
     borderRadius: Radius.lg,
+    borderWidth: 1.5,
     height: 100,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: 6,
+    gap: 4,
   },
-  photoPlaceholderText: { textAlign: 'center', fontSize: FontSize.sm, color: Colors.primary },
-  photoLabel: { fontSize: FontSize.xs, color: Colors.textMuted, textAlign: 'center', fontWeight: '600' },
+  photoEmoji: { fontSize: 22 },
+  photoCardText: {
+    textAlign: 'center',
+    fontSize: FontSize.xs,
+    color: Colors.textSecondary,
+    fontWeight: '600',
+    lineHeight: 16,
+  },
+  photoLabel: {
+    fontSize: FontSize.xs,
+    color: Colors.textMuted,
+    textAlign: 'center',
+    fontWeight: '600',
+  },
   footer: {
     padding: Spacing.lg,
+    paddingBottom: Spacing.xl,
     backgroundColor: Colors.white,
     borderTopWidth: 1,
     borderTopColor: Colors.border,
   },
-  ctaBtn: {
-    backgroundColor: Colors.primary,
-    borderRadius: Radius.lg,
-    paddingVertical: 16,
-    alignItems: 'center',
-  },
-  ctaBtnText: { color: Colors.white, fontSize: FontSize.lg, fontWeight: '700' },
 });

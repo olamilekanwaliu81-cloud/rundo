@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,22 +9,61 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  ActivityIndicator,
+  Animated,
 } from 'react-native';
 import { Colors, Spacing, FontSize, Radius, Shadow } from '../../constants/theme';
 import { useStore } from '../../store/useStore';
+import { PremiumButton } from '../../components/PremiumButton';
 
 export default function LoginScreen({ navigation }: any) {
   const [phone, setPhone] = useState('');
   const [name, setName] = useState('');
   const [isNewUser, setIsNewUser] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [phoneFocused, setPhoneFocused] = useState(false);
+  const [nameFocused, setNameFocused] = useState(false);
   const setUser = useStore((s) => s.setUser);
+
+  const headerSlide = useRef(new Animated.Value(-30)).current;
+  const headerOpacity = useRef(new Animated.Value(0)).current;
+  const cardSlide = useRef(new Animated.Value(50)).current;
+  const cardOpacity = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.spring(headerSlide, {
+        toValue: 0,
+        tension: 80,
+        friction: 10,
+        useNativeDriver: true,
+      }),
+      Animated.timing(headerOpacity, {
+        toValue: 1,
+        duration: 400,
+        useNativeDriver: true,
+      }),
+    ]).start();
+    Animated.sequence([
+      Animated.delay(150),
+      Animated.parallel([
+        Animated.spring(cardSlide, {
+          toValue: 0,
+          tension: 80,
+          friction: 10,
+          useNativeDriver: true,
+        }),
+        Animated.timing(cardOpacity, {
+          toValue: 1,
+          duration: 450,
+          useNativeDriver: true,
+        }),
+      ]),
+    ]).start();
+  }, []);
 
   const handleContinue = async () => {
     if (!phone || phone.length < 10) return;
     setLoading(true);
-    // Simulate auth
     await new Promise((r) => setTimeout(r, 1200));
     setUser({
       id: 'user_' + Date.now(),
@@ -39,6 +78,8 @@ export default function LoginScreen({ navigation }: any) {
     navigation.navigate('RoleSelect');
   };
 
+  const isValid = phone.length >= 10;
+
   return (
     <KeyboardAvoidingView
       style={{ flex: 1 }}
@@ -49,43 +90,59 @@ export default function LoginScreen({ navigation }: any) {
         style={styles.container}
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
+        {/* Back button */}
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Text style={styles.backArrow}>←</Text>
+          <View style={styles.backBtnInner}>
+            <Text style={styles.backArrow}>←</Text>
+          </View>
         </TouchableOpacity>
 
-        <View style={styles.header}>
-          <Text style={styles.brandSmall}>RUNDO</Text>
+        {/* Header */}
+        <Animated.View
+          style={[
+            styles.header,
+            { opacity: headerOpacity, transform: [{ translateY: headerSlide }] },
+          ]}
+        >
+          <View style={styles.brandBadge}>
+            <Text style={styles.brandBadgeText}>RUNDO</Text>
+          </View>
           <Text style={styles.title}>
-            {isNewUser ? 'Create your account' : 'Welcome back'}
+            {isNewUser ? 'Create your\naccount' : 'Welcome\nback'}
           </Text>
-          <Text style={styles.subtitle}>
-            Enter your Nigerian phone number to continue
-          </Text>
-        </View>
+          <Text style={styles.subtitle}>Enter your Nigerian phone number to continue</Text>
+        </Animated.View>
 
-        {/* Form */}
-        <View style={styles.card}>
+        {/* Card */}
+        <Animated.View
+          style={[
+            styles.card,
+            { opacity: cardOpacity, transform: [{ translateY: cardSlide }] },
+          ]}
+        >
           {isNewUser && (
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Full Name</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, nameFocused && styles.inputFocused]}
                 placeholder="e.g. Emeka Okafor"
                 placeholderTextColor={Colors.textMuted}
                 value={name}
                 onChangeText={setName}
                 autoCapitalize="words"
+                onFocus={() => setNameFocused(true)}
+                onBlur={() => setNameFocused(false)}
               />
             </View>
           )}
 
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Phone Number</Text>
-            <View style={styles.phoneRow}>
+            <View style={[styles.phoneRow, phoneFocused && styles.inputFocused]}>
               <View style={styles.flagBadge}>
-                <Text style={styles.flagText}>🇳🇬 +234</Text>
+                <Text style={styles.flagText}>🇳🇬  +234</Text>
               </View>
               <TextInput
                 style={styles.phoneInput}
@@ -95,38 +152,41 @@ export default function LoginScreen({ navigation }: any) {
                 onChangeText={setPhone}
                 keyboardType="phone-pad"
                 maxLength={11}
+                onFocus={() => setPhoneFocused(true)}
+                onBlur={() => setPhoneFocused(false)}
               />
+              {isValid && <Text style={styles.checkmark}>✓</Text>}
             </View>
           </View>
 
-          <TouchableOpacity
-            style={[styles.continueBtn, (!phone || phone.length < 10) && styles.btnDisabled]}
-            onPress={handleContinue}
-            disabled={!phone || phone.length < 10 || loading}
-            activeOpacity={0.85}
-          >
-            {loading ? (
-              <ActivityIndicator color={Colors.dark} />
-            ) : (
-              <Text style={styles.continueBtnText}>Continue →</Text>
-            )}
-          </TouchableOpacity>
-        </View>
+          <View style={{ marginTop: Spacing.sm }}>
+            <PremiumButton
+              label={isNewUser ? 'Create Account' : 'Continue'}
+              onPress={handleContinue}
+              loading={loading}
+              disabled={!isValid}
+            />
+          </View>
+        </Animated.View>
 
+        {/* Switch mode */}
         <TouchableOpacity onPress={() => setIsNewUser(!isNewUser)} style={styles.switchLink}>
           <Text style={styles.switchText}>
-            {isNewUser ? 'Already have an account? ' : 'New to RUNDO? '}
+            {isNewUser ? 'Already have an account?  ' : 'New to RUNDO?  '}
             <Text style={styles.switchHighlight}>
               {isNewUser ? 'Log in' : 'Create account'}
             </Text>
           </Text>
         </TouchableOpacity>
 
+        {/* Trust section */}
         <View style={styles.trustSection}>
-          <Text style={styles.trustTitle}>Your data is protected</Text>
+          <View style={styles.trustIconRow}>
+            <Text style={styles.trustIcon}>🔒</Text>
+            <Text style={styles.trustTitle}>Your data is protected</Text>
+          </View>
           <Text style={styles.trustText}>
-            We use NIN and BVN verification to keep all runners accountable. Your number is
-            never shared.
+            Runners are verified with NIN & BVN. Your number is never shared with third parties.
           </Text>
         </View>
       </ScrollView>
@@ -136,22 +196,39 @@ export default function LoginScreen({ navigation }: any) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
-  content: { padding: Spacing.lg, paddingTop: 60, paddingBottom: Spacing.xxl },
+  content: { padding: Spacing.lg, paddingTop: 56, paddingBottom: Spacing.xxl },
   backBtn: { marginBottom: Spacing.lg },
-  backArrow: { fontSize: 24, color: Colors.textPrimary },
+  backBtnInner: {
+    width: 40,
+    height: 40,
+    borderRadius: Radius.sm,
+    backgroundColor: Colors.white,
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...Shadow.xs,
+  },
+  backArrow: { fontSize: 18, color: Colors.textPrimary },
   header: { marginBottom: Spacing.xl },
-  brandSmall: {
-    fontSize: FontSize.sm,
+  brandBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: Colors.primaryLight,
+    borderRadius: Radius.sm,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 4,
+    marginBottom: Spacing.md,
+  },
+  brandBadgeText: {
+    fontSize: FontSize.xs,
     fontWeight: '900',
     color: Colors.primary,
-    letterSpacing: 4,
-    marginBottom: Spacing.sm,
+    letterSpacing: 3,
   },
   title: {
-    fontSize: FontSize.xxl,
+    fontSize: FontSize.xxxl,
     fontWeight: '800',
     color: Colors.textPrimary,
-    marginBottom: Spacing.xs,
+    marginBottom: Spacing.sm,
+    lineHeight: 40,
   },
   subtitle: {
     fontSize: FontSize.md,
@@ -168,7 +245,7 @@ const styles = StyleSheet.create({
   inputGroup: { marginBottom: Spacing.md },
   label: {
     fontSize: FontSize.sm,
-    fontWeight: '600',
+    fontWeight: '700',
     color: Colors.textPrimary,
     marginBottom: Spacing.xs,
   },
@@ -176,10 +253,14 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: Colors.border,
     borderRadius: Radius.md,
-    padding: Spacing.md,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 14,
     fontSize: FontSize.md,
     color: Colors.textPrimary,
     backgroundColor: Colors.background,
+  },
+  inputFocused: {
+    borderColor: Colors.primary,
   },
   phoneRow: {
     flexDirection: 'row',
@@ -192,32 +273,30 @@ const styles = StyleSheet.create({
   },
   flagBadge: {
     paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.md,
+    paddingVertical: 14,
     backgroundColor: Colors.primaryLight,
     borderRightWidth: 1.5,
     borderRightColor: Colors.border,
   },
-  flagText: { fontSize: FontSize.md, fontWeight: '600', color: Colors.primary },
+  flagText: { fontSize: FontSize.md, fontWeight: '700', color: Colors.primary },
   phoneInput: {
     flex: 1,
-    padding: Spacing.md,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 14,
     fontSize: FontSize.md,
     color: Colors.textPrimary,
   },
-  continueBtn: {
-    backgroundColor: Colors.primary,
-    borderRadius: Radius.lg,
-    paddingVertical: 16,
-    alignItems: 'center',
-    marginTop: Spacing.sm,
-  },
-  btnDisabled: { backgroundColor: Colors.border },
-  continueBtnText: {
-    color: Colors.white,
+  checkmark: {
+    paddingRight: Spacing.md,
     fontSize: FontSize.lg,
+    color: Colors.success,
     fontWeight: '700',
   },
-  switchLink: { alignItems: 'center', marginBottom: Spacing.xl },
+  switchLink: {
+    alignItems: 'center',
+    marginBottom: Spacing.xl,
+    paddingVertical: Spacing.sm,
+  },
   switchText: { fontSize: FontSize.md, color: Colors.textSecondary },
   switchHighlight: { color: Colors.primary, fontWeight: '700' },
   trustSection: {
@@ -227,11 +306,17 @@ const styles = StyleSheet.create({
     borderLeftWidth: 3,
     borderLeftColor: Colors.primary,
   },
+  trustIconRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 4,
+  },
+  trustIcon: { fontSize: 14 },
   trustTitle: {
     fontSize: FontSize.sm,
     fontWeight: '700',
     color: Colors.primary,
-    marginBottom: 4,
   },
   trustText: {
     fontSize: FontSize.sm,
