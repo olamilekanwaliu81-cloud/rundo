@@ -1,6 +1,18 @@
 import { create } from 'zustand';
 import { User, Errand, UserRole } from '../types';
 
+// In-memory registry: phone → role (survives navigation, cleared on full app restart)
+// In production this would be replaced by your backend / AsyncStorage
+const registeredUsers: Record<string, 'sender' | 'runner'> = {};
+
+export function saveRegisteredRole(phone: string, role: 'sender' | 'runner') {
+  registeredUsers[phone] = role;
+}
+
+export function lookupRegisteredRole(phone: string): 'sender' | 'runner' | null {
+  return registeredUsers[phone] ?? null;
+}
+
 interface AppState {
   user: User | null;
   role: UserRole;

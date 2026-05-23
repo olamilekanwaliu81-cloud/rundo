@@ -9,7 +9,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { Colors, Spacing, FontSize, Radius, Shadow } from '../../constants/theme';
-import { useStore } from '../../store/useStore';
+import { useStore, saveRegisteredRole } from '../../store/useStore';
 import { UserRole } from '../../types';
 import { PremiumButton } from '../../components/PremiumButton';
 
@@ -153,6 +153,13 @@ export default function RoleSelectScreen({ navigation }: any) {
   const handleContinue = () => {
     if (!selected) return;
     setRole(selected);
+
+    // Persist phone → role so login can route them back to the right dashboard
+    const phone = useStore.getState().user?.phone;
+    if (phone && selected) {
+      saveRegisteredRole(phone, selected);
+    }
+
     if (selected === 'sender') {
       navigation.reset({ index: 0, routes: [{ name: 'SenderTabs' }] });
     } else {

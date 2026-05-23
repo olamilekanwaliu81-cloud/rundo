@@ -12,7 +12,7 @@ import {
   Animated,
 } from 'react-native';
 import { Colors, Spacing, FontSize, Radius, Shadow } from '../../constants/theme';
-import { useStore } from '../../store/useStore';
+import { useStore, lookupRegisteredRole } from '../../store/useStore';
 import { PremiumButton } from '../../components/PremiumButton';
 
 export default function LoginScreen({ navigation, route }: any) {
@@ -82,19 +82,26 @@ export default function LoginScreen({ navigation, route }: any) {
       setLoading(false);
       navigation.navigate('RoleSelect');
     } else {
-      // Returning user — go straight to dashboard (default: SenderTabs)
-      // In production this would load the saved role from the backend
+      // Returning user — look up their saved role and route to the right dashboard
+      const savedRole = lookupRegisteredRole(phone);
+
       setUser({
         id: 'user_returning',
         name: 'User',
         phone,
-        role: 'sender',
+        role: savedRole,
         rating: 4.8,
         totalJobs: 12,
         isVerified: true,
       });
       setLoading(false);
-      navigation.reset({ index: 0, routes: [{ name: 'SenderTabs' }] });
+
+      if (savedRole === 'runner') {
+        navigation.reset({ index: 0, routes: [{ name: 'RunnerTabs' }] });
+      } else {
+        // Default to sender if no role found (edge case)
+        navigation.reset({ index: 0, routes: [{ name: 'SenderTabs' }] });
+      }
     }
   };
 
